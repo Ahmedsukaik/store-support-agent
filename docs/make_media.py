@@ -49,7 +49,7 @@ def main(url: str) -> None:
         page.wait_for_timeout(3000)
         click("Next: catch a bad reply")
         page.wait_for_timeout(1200)
-        click("Send the bad draft")
+        click("Send the customer's message")
         page.get_by_role("button", name="See what it cost").wait_for(timeout=90000)
         page.wait_for_timeout(3200)
         page.screenshot(path=str(OUT / "screen-held.png"))

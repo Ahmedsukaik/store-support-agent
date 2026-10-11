@@ -135,7 +135,7 @@ which other tools often set, are ignored.
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q          # 362 tests
+python -m pytest -q          # 363 tests
 python -m evals              # conversation scenarios, guided rules
 python -m evals --live       # the same scenarios with Claude (needs a key; costs a few cents)
 python -m evals --url URL    # through a deployed demo
@@ -159,7 +159,7 @@ customer's order and to talk the agent into a refund).
 | Run | Result |
 |---|---|
 | Guided rules (no AI) | 22 of 22 passed; 5 scenarios need a language model and are skipped |
-| Claude Haiku 5.5 | not run yet: it runs once the live demo has its API key |
+| Claude Haiku 5.5, through the live demo (11 Oct 2026) | 27 of 27 passed; all 27 conversations together cost $0.0091 |
 
 What is not covered: a real store's API, real customer traffic, load, channels other than web
 chat (email, SMS), and conversations longer than the demo's 25 messages.
@@ -179,7 +179,7 @@ chat (email, SMS), and conversations longer than the demo's 25 messages.
 | `support/web.py` + `public/` | the demo: API and page |
 | `support/demo_data.py` | the fictional store's catalog, customers and orders |
 | `evals/` | the conversation scenarios and their runner |
-| `tests/` | 362 tests |
+| `tests/` | 363 tests |
 | `docs/USER_GUIDE.md` | for the support team |
 
 The server keeps nothing between requests. The browser holds its chat as a list of events,

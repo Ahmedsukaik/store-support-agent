@@ -78,7 +78,7 @@ def test_the_whole_story_in_six_steps(page):
     assert "$182.05" in card.inner_text() and "Return fee" in card.inner_text() and "Worked out by the store's code" in card.inner_text()
     assert "ring" in (button(page, "Approve refund").get_attribute("class") or "")
     button(page, "Approve refund").click()
-    page.locator(".story-title", has_text="Maya hears back.").wait_for()
+    page.locator(".story-title", has_text="Maya hears back in seconds.").wait_for()
     assert "$182.05" in page.locator(".event").inner_text()
     button(page, "Next: try to trick it").click()
     button(page, "Send the trick").click()
@@ -86,7 +86,7 @@ def test_the_whole_story_in_six_steps(page):
     assert "Refunds created: 0" in page.locator("#story").inner_text()
     assert "Earlier in this demo" in page.locator("#panel").inner_text()  # Maya's approved return stays visible
     button(page, "Next: catch a bad reply").click()
-    button(page, "Send the bad draft").click()
+    button(page, "Send the customer's message").click()
     page.locator(".story-title", has_text="Stopped before the customer saw it.").wait_for()
     assert "A draft was stopped by a check" in page.locator("#thread").inner_text()
     assert "$50.00 store credit" not in page.locator("#thread").inner_text()
@@ -111,10 +111,12 @@ def test_rejecting_needs_a_reason_shown_in_the_card(page):
     button(page, "Start the demo").click()
     button(page, "Send Maya's message").click()
     page.locator(".story-title", has_text="Your turn").wait_for()
+    assert page.locator(".req .input").count() == 0  # the reason field only opens for a rejection
     button(page, "Reject").click()
+    button(page, "Send rejection").click()
     assert "Write a short reason" in page.locator(".field-error").inner_text()
     page.locator(".req .input").fill("The tags were removed.")
-    button(page, "Reject").click()
+    button(page, "Send rejection").click()
     page.locator(".event.rejected").wait_for()
     assert "The tags were removed." in page.locator(".event.rejected").inner_text()
 
@@ -150,7 +152,7 @@ def test_on_a_phone_the_story_sits_at_the_bottom_and_switches_views(browser, sit
     sheet = page.locator("#story").bounding_box()
     assert box and sheet and box["y"] + box["height"] <= sheet["y"]  # Approve is not under the story sheet
     button(page, "Approve refund").click()
-    page.locator(".story-title", has_text="Maya hears back.").wait_for()
+    page.locator(".story-title", has_text="Maya hears back in seconds.").wait_for()
     assert page.locator(".customer-pane").is_visible()
     context.close()
     assert errors == []

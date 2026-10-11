@@ -22,7 +22,7 @@
   ];
   const S = {
     config: null, session: null, view: null, live: true, busy: false, step: 0, wait: "", archive: [], story: {},
-    openQuotes: new Set(), seen: new Set(), drafts: {}, pane: "customer", errors: {}, showPeople: false, hoodOpen: false,
+    openQuotes: new Set(), seen: new Set(), drafts: {}, pane: "customer", errors: {}, showPeople: false, hoodOpen: false, rejecting: null,
   };
 
   const icon = (name, cls = "i") => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="#${name}"/></svg>`;
@@ -50,7 +50,13 @@
     const el = $("#toast"); el.textContent = msg; el.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, ms);
   }
-  function announce(msg) { const el = $("#announce"); el.textContent = ""; setTimeout(() => { el.textContent = msg; }, 60); }
+  let announceText = "", announceTimer = null;
+  function announce(msg) {  // messages that arrive together are read together
+    const el = $("#announce");
+    announceText = announceText ? announceText + " " + msg : msg;
+    el.textContent = ""; clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => { el.textContent = announceText; announceText = ""; }, 60);
+  }
   async function post(path, body) {
     const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
     const data = await res.json().catch(() => ({}));
@@ -62,7 +68,7 @@
   // ------------------------------------------------------------------ talking to the server
   async function newChat() {
     const data = await post("/api/new");
-    S.session = data.session; S.view = data.view; S.openQuotes.clear(); S.drafts = {}; S.errors = {};
+    S.session = data.session; S.view = data.view; S.openQuotes.clear(); S.drafts = {}; S.errors = {}; S.rejecting = null;
     save(); render();
   }
   async function step(action) {
@@ -111,6 +117,7 @@
     S.busy = b;
     document.body.classList.toggle("busy", b);
     document.querySelectorAll("#story-actions button, .req-actions .btn, .chip, #send").forEach((x) => { x.disabled = b; });
+    if (!b) renderComposer();  // the send arrow only comes back when there is something to send
   }
 
   // ------------------------------------------------------------------ the story
@@ -127,7 +134,8 @@
       case 0: return {
         main: `<span class="pill pill-demo pill-plain">Live demo on a made up store</span>
           <h2 class="story-headline" id="story-title">It answers your customers. Your team approves the money.</h2>
-          <p class="story-sub">Follow one return from chat to refund. You approve it. About one minute.</p>`,
+          <p class="story-sub">Follow one return from chat to refund. You approve it. About one minute.</p>
+          <ul class="hero-points"><li>${icon("check")}Customers verified first</li><li>${icon("check")}Code works out every refund</li><li>${icon("check")}A person approves each one</li></ul>`,
         actions: `<button type="button" class="btn btn-primary" data-go="start">Start the demo</button>
           <button type="button" class="btn-link" data-go="free">Skip to free chat</button>`, focus: "customer" };
       case 1: {
@@ -135,7 +143,7 @@
         const noRequest = asked && !S.busy && !pending().length;
         return {
           main: head(1, "A customer needs help.") + (noRequest
-            ? `<p class="story-text">The assistant replied without sending a request this time. AI can do that; send the message again.</p>`
+            ? `<p class="story-text">The assistant asked a question instead of sending the request this time. Send Maya's message again.</p>`
             : `<p class="story-text">Maya's rain jacket is too small. She opens the store's chat.</p>`) + waitLine,
           actions: S.busy ? "" : `<button type="button" class="btn btn-primary" data-go="${noRequest ? "retry" : "send-maya"}">${noRequest ? "Send it again" : "Send Maya's message"}</button>`,
           focus: "customer" };
@@ -148,9 +156,9 @@
       case 3: {
         const rejected = decided().some((r) => r.status === "rejected");
         return {
-          main: head(3, "Maya hears back.") + `<p class="story-text">${rejected
-            ? "You rejected it, so Maya got your reason in her chat. Nothing changed in the store."
-            : "Maya gets the update in her chat right away. Nothing changed until you clicked Approve."}</p>`,
+          main: head(3, "Maya hears back in seconds.") + `<p class="story-text">${rejected
+            ? "You rejected it, so Maya got your reason in her chat right away. Nothing changed in the store."
+            : "Your click approved the refund, and Maya was told in her chat right away. <b>The AI asked, the store's code set the amount, a person decided.</b>"}</p>`,
           actions: `<button type="button" class="btn btn-primary" data-go="to-trick">Next: try to trick it</button>`, focus: "customer" };
       }
       case 4: {
@@ -160,37 +168,43 @@
         const made = (v?.requests || []).length;
         const shared = (v?.transcript || []).some((t) => (t.steps || []).some((s) => s.tool === "get_order" && s.ok));
         return {
-          main: head(4, made ? "That one reached the team, and still needs a person." : "The trick got nothing.") + `<ul class="story-list">
-            <li>${icon(made ? "alert" : "check-circle")}<span><b>Refunds created: ${made ? made + " (waiting for a person)" : 0}</b></span></li>
-            <li>${icon(shared ? "alert" : "check-circle")}<span><b>Order details shared: ${shared ? "yes" : "none"}</b></span></li>
+          main: head(4, made ? "That one reached the team, and still needs a person." : "The trick got nothing.") + `<ul class="story-list one">
+            <li>${made ? icon("alert", "i warn") : icon("check-circle")}<span><b>Refunds created: ${made ? made + " (waiting for a person)" : 0}</b></span></li>
+            <li>${shared ? icon("alert", "i warn") : icon("check-circle")}<span><b>Order details shared: ${shared ? "yes" : "none"}</b></span></li>
             <li>${icon("shield")}<span>The assistant can't refund anything. It can only send a request a person approves, and it opens an order only when the number and email match.</span></li></ul>`,
           actions: `<button type="button" class="btn btn-primary" data-go="to-bad">Next: catch a bad reply</button>`, focus: "customer" };
       }
       case 5: {
         if (!st.badDone) return {
-          main: head(5, "Bad replies never reach the customer.") + `<p class="story-text">Every reply is checked before the customer sees it. Here we hand the checker a bad draft on purpose: a $50 credit nobody approved.</p>` + waitLine,
-          actions: S.busy ? "" : `<button type="button" class="btn btn-primary" data-go="send-bad">Send the bad draft</button>`, focus: "customer" };
+          main: head(5, "Catch a bad AI reply.") + `<p class="story-text">A customer asks for something for the trouble. For this test we force the AI's draft to promise a $50 credit nobody approved. Watch what the customer actually gets.</p>` + waitLine,
+          actions: S.busy ? "" : `<button type="button" class="btn btn-primary" data-go="send-bad">Send the customer's message</button>`, focus: "customer" };
         return {
-          main: head(5, "Stopped before the customer saw it.") + `<p class="story-text">The customer got a safe reply instead. Your team got the draft and the reason: <b>it mentions $50.00, which isn't in the order, the policy or anything your team wrote.</b></p>`,
+          main: head(5, "Stopped before the customer saw it.") + `<p class="story-text">Every reply is checked before the customer sees it. This one got a safe reply instead, and your team got the draft and the reason: <b>it mentions $50.00, which is not in the order data, the help center or the team's messages.</b></p>`,
           actions: `<button type="button" class="btn btn-primary" data-go="to-cost">See what it cost</button>`, focus: "team" };
       }
       case 6: {
         const cost = st.mayaCost || 0;
         const figures = cost ? `<div class="story-figures"><div><span>Maya's whole chat</span><strong>${money(cost)}</strong></div>
             <div><span>1,000 chats like it</span><strong>$${(cost * 1000).toFixed(2)}</strong></div></div>`
-          : `<p class="story-text">Cost shows when the live AI answers. This run used fixed rules, at no cost.</p>`;
+          : `<p class="story-text">This run used the fixed rules, so it cost nothing. Cost shows when the live AI answers: a whole chat like Maya's is about a tenth of a cent.</p>`;
+        const rejected = S.archive.some((r) => r.status === "rejected");
         return {
-          main: head(6, "What it costs.") + figures + `<ul class="story-list">
+          main: head(6, "What you just saw, and what it costs.") + figures + `<ul class="story-list">
             <li>${icon("check-circle")}<span>Maya was verified before anything was shown</span></li>
-            <li>${icon("check-circle")}<span>Code set the refund; you approved it</span></li>
-            <li>${icon("check-circle")}<span>The fake manager got nothing</span></li>
+            <li>${icon("check-circle")}<span>Code set the refund; you ${rejected ? "rejected" : "approved"} it</span></li>
+            <li>${icon("check-circle")}<span>${st.trickReached ? "The fake manager's request still needed a person" : "The fake manager got nothing"}</span></li>
             <li>${icon("check-circle")}<span>A bad draft was stopped</span></li>
-            <li>${icon("check-circle")}<span>Every step is logged, under the hood in the inbox</span></li></ul>`,
+            <li>${icon("check-circle")}<span>Every step is logged (Under the hood, in the inbox)</span></li></ul>
+            <p class="story-note">Your version runs on your orders, your return policy and your team.</p>`,
           actions: `<button type="button" class="btn btn-primary" data-go="free">Try it yourself</button>
             <button type="button" class="btn-link" data-go="replay">Replay the demo</button>`, focus: "customer" };
       }
       default: {
         const people = (S.config?.identities || []).map((p, i) => `<button type="button" class="chip" data-person="${i}">${esc(p.name)}</button>`).join("");
+        if (S.view?.ai_paused) return {
+          main: `<div class="story-kicker">Free chat</div><h2 class="story-title" id="story-title">A person has this chat now.</h2>
+            <p class="story-text">The assistant stepped back. Reply as the team in the inbox, hand it back to the assistant, or start a new chat.</p>`,
+          actions: `<button type="button" class="btn btn-secondary" data-go="free">Start a new chat</button>`, focus: "both" };
         return {
           main: `<div class="story-kicker">Free chat</div><h2 class="story-title" id="story-title">Ask anything a customer would, then approve or reject in the inbox.</h2>
             <div class="test-customer"><span>Test customer: <b>Maya Lopez</b>, order <code>1042</code>, <code>maya.lopez@example.com</code></span>
@@ -208,9 +222,13 @@
     document.body.dataset.step = String(S.step);
     document.body.dataset.focus = c.focus;
     document.body.classList.toggle("in-story", S.step !== "free");
-    $("#replay").hidden = S.step === 0;
+    $("#replay").hidden = [0, 1, 2].includes(S.step);
     document.querySelectorAll("#story-actions button").forEach((x) => { x.disabled = S.busy; });
-    requestAnimationFrame(() => document.body.style.setProperty("--story-h", $("#story").offsetHeight + "px"));
+    $(".layout").inert = S.step === 0;
+    requestAnimationFrame(() => {
+      const story = $("#story");
+      document.body.style.setProperty("--story-h", (getComputedStyle(story).position === "fixed" ? story.offsetHeight : 0) + "px");
+    });
   }
   function setStep(n) {
     const before = S.step;
@@ -221,39 +239,51 @@
       announce($("#story-title")?.textContent || "");
       if (isPhone() && c.focus !== "both" && c.focus !== S.pane) setPane(c.focus, true);
       const primary = $("#story-actions .btn-primary");
-      if (primary && n !== 0) primary.focus({ preventScroll: true });
-      if (n === 2) {  // bring the Approve button into view, above the story sheet on phones
-        const approve = document.querySelector("[data-approve]");
-        if (approve) { approve.scrollIntoView({ block: isPhone() ? "center" : "nearest" }); if (!isPhone()) approve.focus({ preventScroll: true }); }
+      if (primary && n !== 0 && S.keyboard) primary.focus({ preventScroll: true });  // keyboard users keep their place; no ring for clicks
+      if (n === 2) {  // show the request card from its amount down to Approve
+        const card = $(".req.ring-card"), panel = $("#panel");
+        if (card) panel.scrollTop += card.getBoundingClientRect().top - panel.getBoundingClientRect().top - 12;
+        if (S.keyboard) document.querySelector("[data-approve]")?.focus({ preventScroll: true });
       }
     }
   }
+  // Each story step starts a fresh chat; the activity log keeps the earlier ones.
+  function keepLog() { S.story.log = [...(S.story.log || []), ...(S.view?.audit || [])].slice(-60); }
   // Move the story forward when the chat reaches the next moment.
   function advance() {
     if (S.step === 1 && pending().length) setStep(2);
     else if (S.step === 2 && decided().length) setStep(3);
   }
 
+  // A send button disappears while the assistant works; keyboard users get focus back on the next action.
+  function refocus() {
+    if (S.keyboard && document.activeElement === document.body) (S.step === 2 ? $("[data-approve]") : $("#story-actions .btn-primary"))?.focus({ preventScroll: true });
+  }
   async function go(what) {
     if (S.busy) return;
     try {
       if (what === "start") { S.archive = []; S.story = {}; await newChat(); setStep(1); }
       else if (what === "send-maya" || what === "retry") {
         if (what === "retry") await newChat();
-        await send(MAYA_MSG); advance(); renderStory();
+        await send(MAYA_MSG); advance(); renderStory(); refocus();
       } else if (what === "show-team") { setPane("team", true); renderStory(); }
       else if (what === "to-trick") {
         S.story.mayaCost = S.view?.metrics?.cost_usd || 0;
         S.archive = decided().map((r) => ({ ...r, earlier: true }));
-        await newChat(); setStep(4);
+        keepLog(); await newChat(); setStep(4);
       } else if (what === "send-trick") {
-        if (await send(TRICK_MSG)) { S.story.trickDone = true; save(); }
-        renderStory();
+        if (await send(TRICK_MSG)) {
+          S.story.trickDone = true;
+          S.story.trickReached = (S.view?.requests || []).length > 0
+            || (S.view?.transcript || []).some((t) => (t.steps || []).some((s) => s.tool === "get_order" && s.ok));
+          save();
+        }
+        renderStory(); renderComposer(); refocus();
       } else if (what === "to-bad") setStep(5);
       else if (what === "send-bad") {
-        await newChat();  // a fresh chat, so nothing from the trick (a hand-off, say) gets in the way
+        keepLog(); await newChat();  // a fresh chat, so nothing from the trick (a hand-off, say) gets in the way
         if (await send(BAD_MSG, { simulate: "bad_draft" })) { S.story.badDone = true; save(); }
-        renderStory();
+        renderStory(); renderComposer(); refocus();
         if (isPhone()) setPane("team", true);
       } else if (what === "to-cost") setStep(6);
       else if (what === "free") { S.archive = []; await newChat(); setStep("free"); $("#input").focus(); }
@@ -389,7 +419,7 @@
     const done = r.status === "approved"
       ? `<div class="decided">${icon("check-circle")}<span><b>Approved.</b> The customer was told in the chat.</span></div>`
       : `<div class="decided rejected">${icon("x-circle")}<span><b>Not approved.</b> ${esc(r.note || "")}</span></div>`;
-    return `<article class="card req${isPending && !S.seen.has(r.id) ? " is-new" : ""}${isPending ? "" : " done"}" aria-label="${esc(r.heading || r.title)}">
+    return `<article class="card req${isPending && !S.seen.has(r.id) ? " is-new" : ""}${isPending ? "" : " done"}${ring ? " ring-card" : ""}" aria-label="${esc(r.heading || r.title)}">
       <div class="req-head"><span class="tile">${icon(r.kind === "return" ? "undo" : r.kind === "cancellation" ? "x-circle" : "package")}</span>
         <div><div class="req-title">${esc(r.heading || r.title)}</div>${r.why ? `<div class="req-sub">Reason: ${esc(r.why)}</div>` : ""}
         ${r.earlier ? '<div class="earlier">Earlier in this demo</div>' : ""}</div>
@@ -402,10 +432,10 @@
         <ul class="checks">${r.checks.map((c) => `<li><span class="tick">${icon("check")}</span><span>${esc(c.label)}</span></li>`).join("")}</ul></div>
         ${r.flags.map((f) => `<div class="flag">${icon("alert")}<span>${esc(f)}</span></div>`).join("")}</div>
       <div class="req-foot">
-        <div><label class="field-label" for="note-${esc(r.id)}"><span>Reason for the customer</span><span>Only if you reject</span></label>
+        ${S.rejecting === r.id ? `<div><label class="field-label" for="note-${esc(r.id)}"><span>Reason for the customer</span><span>The customer sees this</span></label>
         <textarea class="input${err ? " has-error" : ""}" id="note-${esc(r.id)}" rows="2" maxlength="300" dir="auto" placeholder="For example: the tags were removed, so we can't accept this return."></textarea>
-        ${err ? `<div class="field-error">${icon("alert")}${esc(err)}</div>` : ""}</div>
-        <div class="req-actions"><button type="button" class="btn btn-danger" data-reject="${esc(r.id)}">${icon("x")}Reject</button>
+        ${err ? `<div class="field-error">${icon("alert")}${esc(err)}</div>` : ""}</div>` : ""}
+        <div class="req-actions"><button type="button" class="btn btn-danger" data-reject="${esc(r.id)}">${icon("x")}${S.rejecting === r.id ? "Send rejection" : "Reject"}</button>
         <button type="button" class="btn btn-primary${ring}" data-approve="${esc(r.id)}">${icon("check")}${esc(r.approve_label || "Approve")}</button></div></div>` : done}
     </article>`;
   }
@@ -440,13 +470,18 @@
       <div><div class="guard-title">What the code enforces, whatever the AI says</div><div class="guard-sub">${rules.length} rules, checked on every step</div></div>${icon("chev-down", "i chev")}</summary>
       <ul class="checks">${rules.map((r) => `<li><span class="tick">${icon("check")}</span><span>${esc(r)}</span></li>`).join("")}</ul></details>`;
   }
+  const ACTIONS = { verify_customer: "Checked the customer", get_order: "Opened", find_products: "Searched products for",
+    request_return: "Sent a return request:", request_cancellation: "Sent a cancellation request:",
+    request_address_change: "Sent an address change request:", hand_off: "Passed to a person:", approve: "Approved",
+    reject: "Rejected", reply: "Replied:", return_to_assistant: "Handed back to the assistant:" };
   function hoodCard(v) {
     const m = v.metrics || {};
     const tokens = (n) => (n || 0).toLocaleString("en-US");
     const cfg = S.config || {};
     const model = cfg.model ? prettyModel(cfg.model) : "not configured";
-    const log = (v.audit || []).slice().reverse().map((a) => `<li class="${a.outcome === "refused" ? "refused" : ""}"><span class="actor ${esc(a.actor)}">${esc(a.actor)}</span>
-      <span class="what">${esc(a.action.replace(/_/g, " "))} <span>${esc(a.detail)}</span></span><span class="out ${a.outcome === "refused" ? "refused" : ""}">${esc(a.outcome)}</span></li>`).join("");
+    const entries = [...(S.step === "free" ? [] : S.story.log || []), ...(v.audit || [])];
+    const log = entries.reverse().map((a) => `<li class="${a.outcome === "refused" ? "refused" : ""}"><span class="actor ${esc(a.actor)}">${esc(a.actor)}</span>
+      <span class="what">${esc(ACTIONS[a.action] || a.action.replace(/_/g, " "))} <span>${esc(String(a.detail).replace(/\b[a-z]+(?:_[a-z]+)+\b/g, (w) => REASON[w] || w.replace(/_/g, " ")))}</span></span><span class="out ${a.outcome === "refused" ? "refused" : ""}">${esc(a.outcome)}</span></li>`).join("");
     const orders = (v.orders || []).map((o) => `<li><div class="row-title">#${esc(o.number)} <span>${esc(o.customer)}</span></div><div class="row-amt">${esc(o.total)}</div>
       <div class="row-sub"><span class="row-status">${esc(o.status)}</span></div><div class="row-items">${o.items.map(esc).join(", ")}</div></li>`).join("");
     return `<details class="card hood" id="hood"${S.hoodOpen ? " open" : ""}><summary><span class="tile">${icon("cpu")}</span>
@@ -492,6 +527,8 @@
     return null;
   }
   function wire() {
+    document.addEventListener("keydown", (e) => { if (e.key === "Tab" || e.key === "Enter" || e.key === " ") S.keyboard = true; }, true);
+    document.addEventListener("pointerdown", () => { S.keyboard = false; }, true);
     $("#composer").addEventListener("submit", (e) => { e.preventDefault(); composerSend(); });
     $("#input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); composerSend(); } });
     $("#input").addEventListener("input", autosize);
@@ -516,6 +553,7 @@
         team("approve", { request_id: id, note: "" }).then((ok) => { if (ok) { delete S.drafts[`note-${id}`]; advance(); } });
       } else if (t.dataset.reject) {
         const id = t.dataset.reject;
+        if (S.rejecting !== id) { S.rejecting = id; renderInbox(); $(`#note-${id}`)?.focus(); return; }  // first click asks for the reason
         const note = $(`#note-${id}`)?.value.trim();
         if (!note) { S.errors[id] = "Write a short reason for the customer first."; renderInbox(); $(`#note-${id}`)?.focus(); return; }
         delete S.errors[id];
@@ -549,7 +587,6 @@
     }
     if (!S.view) { await newChat(); S.step = 0; }
     render();
-    if (S.step === 0) $("#story-actions .btn-primary")?.focus({ preventScroll: true });
   }
   init();
 })();

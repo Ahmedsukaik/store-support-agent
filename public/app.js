@@ -224,7 +224,7 @@
       if (primary && n !== 0) primary.focus({ preventScroll: true });
       if (n === 2) {  // bring the Approve button into view, above the story sheet on phones
         const approve = document.querySelector("[data-approve]");
-        if (approve) { approve.scrollIntoView({ block: "center" }); if (!isPhone()) approve.focus({ preventScroll: true }); }
+        if (approve) { approve.scrollIntoView({ block: isPhone() ? "center" : "nearest" }); if (!isPhone()) approve.focus({ preventScroll: true }); }
       }
     }
   }
@@ -296,7 +296,7 @@
         }).join("");
         const quotes = (it.sources || []).map((s, j) => S.openQuotes.has(`${idx}-${j}`) ? `<div class="quote"><b>${esc(String(s.title).replace(" > ", ": "))}</b>${esc(s.quote)}</div>` : "").join("");
         html += `<div class="bot">${leaf()}
-          <div class="bot-name">Copperleaf assistant <span class="tag">${it.mode === "live" ? "AI" : "Fixed rules"}</span></div>
+          <div class="bot-name">Copperleaf assistant <span class="tag">${it.simulated ? "Test draft" : it.mode === "live" ? "AI" : "Fixed rules"}</span></div>
           ${trace(it.steps, idx === lastBot)}
           ${it.held ? `<span class="held-note">${icon("shield", "i i-sm")}A draft was stopped by a check. The customer got this instead:</span>` : ""}
           <div class="bubble bubble-in${it.held ? " held" : ""}" dir="auto"><span class="sr-only">Assistant: </span>${format(it.text)}</div>

@@ -135,7 +135,7 @@ which other tools often set, are ignored.
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q          # 363 tests
+python -m pytest -q          # 365 tests
 python -m evals              # conversation scenarios, guided rules
 python -m evals --live       # the same scenarios with Claude (needs a key; costs a few cents)
 python -m evals --url URL    # through a deployed demo
@@ -179,7 +179,7 @@ chat (email, SMS), and conversations longer than the demo's 25 messages.
 | `support/web.py` + `public/` | the demo: API and page |
 | `support/demo_data.py` | the fictional store's catalog, customers and orders |
 | `evals/` | the conversation scenarios and their runner |
-| `tests/` | 363 tests |
+| `tests/` | 365 tests |
 | `docs/USER_GUIDE.md` | for the support team |
 
 The server keeps nothing between requests. The browser holds its chat as a list of events,

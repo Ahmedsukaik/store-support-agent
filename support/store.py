@@ -141,7 +141,8 @@ class StoreState:
         self.log("assistant", "verify_customer", f"order #{number}, {mask_email(address)}", "verified")
         mine = [o for o in self.orders.values() if o["email"] == address]
         return {"verified": True, "first_name": CUSTOMERS[address]["first_name"],
-                "orders": [{"order_number": o["number"], "placed": nice_date(o["placed"]), "status": self.status_text(o)}
+                # Only which orders exist: details come from get_order, so every answer about an order is a lookup.
+                "orders": [{"order_number": o["number"], "placed": nice_date(o["placed"])}
                            for o in sorted(mine, key=lambda o: o["placed"], reverse=True)]}
 
     def status_text(self, order: dict[str, Any]) -> str:

@@ -253,11 +253,12 @@ def _intent(text: str) -> str | None:
     if SELL.search(text):
         return "product"
     words = set(re.findall(r"[a-z]+", text.lower()))
-    if any((words & w) - {"trail", "summit", "rain"} for w in PRODUCT_WORDS.values()) and not POLICY.search(text):
+    generic = {"trail", "summit", "rain", "hiking", "camp"}
+    if any((words & w) - generic for w in PRODUCT_WORDS.values()) and not POLICY.search(text):
         return "product"
     if POLICY.search(text):
         return "policy"
-    if any((words & w) - {"trail", "summit"} for w in PRODUCT_WORDS.values()):
+    if any((words & w) - generic for w in PRODUCT_WORDS.values()):
         return "product"
     return None
 
@@ -363,7 +364,7 @@ class GuidedModel:
                 return [_text("I couldn't find an order with that order number and email. Could you check both and send them again?")]
             if intent in ORDER_INTENTS:
                 return [_order_call(intent, call["input"]["order_number"], text, n)]
-            listing = "; ".join(f"#{o['order_number']}: {o['status']}" for o in data.get("orders", []))
+            listing = ", ".join(f"#{o['order_number']} (placed {o['placed']})" for o in data.get("orders", []))
             return [_text(f"{hi}I found your orders. {listing}. What would you like to do?")]
         if name == "search_help_center":
             return [_policy_answer(result, text)]

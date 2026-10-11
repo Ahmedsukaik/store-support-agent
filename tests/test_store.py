@@ -91,7 +91,7 @@ def test_a_recent_delivery_shows_until_when_damage_can_be_reported(state):
 # ------------------------------------------------------------------ returns: the store computes the refund
 def test_a_return_for_the_wrong_size_deducts_the_return_fee(maya):
     result = maya.request_return("1042", [{"line_id": "L1", "quantity": 1}], "wrong_size", "refund")
-    assert result["status"] == "waiting for team review"
+    assert result["status"] == "sent to the team, waiting for their review"
     assert result["refund_if_approved"] == "$182.05" and result["return_fee_deducted"] == "$6.95"
     request = maya.requests[0]
     assert request["amount"] == 18900 - RETURN_FEE and request["status"] == "pending"
@@ -162,7 +162,7 @@ def test_return_reason_and_resolution_must_be_known(maya, reason, resolution, co
 def test_asking_twice_gives_the_same_request(maya):
     first = maya.request_return("1042", [{"line_id": "L1", "quantity": 1}], "wrong_size", "refund")
     again = maya.request_return("1042", [{"line_id": "L1", "quantity": 1}], "wrong_size", "refund")
-    assert first["request_id"] == again["request_id"] and len(maya.requests) == 1
+    assert first == again and len(maya.requests) == 1
 
 
 def test_an_approved_return_cannot_be_requested_again(maya):
@@ -183,7 +183,7 @@ def test_the_manager_flag_counts_every_refund_on_the_order(maya):
     maya.orders["1042"]["lines"][0].update(qty=2, price=25900)  # two $259 jackets
     maya.request_return("1042", [{"line_id": "L1", "quantity": 1}], "defective", "refund")
     second = maya.request_return("1042", [{"line_id": "L1", "quantity": 1}], "wrong_size", "refund")
-    assert maya.requests[0]["flags"] == [] and second["request_id"] == "R-2"
+    assert maya.requests[0]["flags"] == [] and second and maya.requests[1]["id"] == "R-2"
     assert maya.requests[1]["flags"] == ["Refunds on this order over $300.00: needs a manager"]
 
 
@@ -253,9 +253,9 @@ def test_an_order_that_has_not_shipped_can_be_cancelled_after_approval(state):
     state.verify_customer("1051", DANIEL)
     result = state.request_cancellation("1051", "ordered the wrong tent")
     assert result["refund_if_approved"] == "$418.00"
-    assert state.request_cancellation("1051", "again")["request_id"] == result["request_id"]
+    assert state.request_cancellation("1051", "again") == result and len(state.requests) == 1
     assert state.orders["1051"]["status"] == "processing"  # nothing changes before a person approves
-    state.decide(result["request_id"], True)
+    state.decide("R-1", True)
     assert state.orders["1051"]["status"] == "cancelled"
     assert "$418.00" in state.notices[-1]["text"] and "Mastercard ending 5307" in state.notices[-1]["text"]
     assert refused(state.request_cancellation, "1051", "x").code == "already_cancelled"
@@ -274,7 +274,7 @@ def test_an_address_change_is_checked_and_applied_only_after_approval(state):
     result = state.request_address_change("1051", NEW_ADDRESS)
     assert result["new_address"] == "Daniel Kim, 12 Pine St, Seattle, WA 98101, US"
     assert state.orders["1051"]["address"]["city"] == "Vancouver"
-    state.decide(result["request_id"], True)
+    state.decide("R-1", True)
     assert state.orders["1051"]["address"]["city"] == "Seattle"
 
 
@@ -298,7 +298,7 @@ def test_a_canadian_postal_code_is_accepted_and_a_newer_address_replaces_a_pendi
 # ------------------------------------------------------------------ hand-offs and the team's decisions
 def test_a_hand_off_pauses_the_assistant_and_collects_follow_ups(maya):
     first = maya.hand_off("damaged_item", "Stove arrived broken.", "normal")
-    assert maya.ai_paused and first["ticket_id"] == "T-1"
+    assert maya.ai_paused and first["status"] == "passed to a person on the team" and maya.tickets[0]["id"] == "T-1"
     maya.hand_off("upset_customer", "Customer is upset.", "urgent")
     ticket = maya.tickets[0]
     assert len(maya.tickets) == 1 and ticket["priority"] == "urgent" and "Customer is upset." in ticket["summary"]

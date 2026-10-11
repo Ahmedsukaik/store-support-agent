@@ -54,13 +54,13 @@ help center need a fix.
 
 ## Cost
 
-The Cost tab shows what the chat cost in AI usage, the number of model calls and tool calls,
-and how many tokens came from the cache (cached tokens cost a tenth). Most chats cost a
-fraction of a cent.
+The top of the inbox shows what the chat cost in AI usage. In the demo a whole return
+conversation costs about a tenth of a cent.
 
-## Orders and activity
+## Under the hood
 
-**Orders** shows the store as it is now, including approved returns and cancellations.
-**Activity** lists every step: each lookup, each request, each refusal and each decision, with
-who made it (the assistant, the customer, the team, or the system). Use it to answer "why did
-the assistant say that?"
+At the bottom of the inbox, **Under the hood** opens the details: who answers (the live AI or
+fixed rules), the usage of the chat (model calls, tool calls, tokens, timing), the **activity
+log** and the store's **orders**. The activity log lists every step: each lookup, each request,
+each refusal and each decision, with who made it (the assistant, the customer, the team, or
+the system). Use it to answer "why did the assistant say that?"

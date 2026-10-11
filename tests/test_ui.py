@@ -1,5 +1,6 @@
-"""The demo page in a real browser (an installed Chrome or Edge, through Playwright).
-Skipped when Playwright or a browser is not available."""
+"""The demo page in a real browser (an installed Chrome or Edge, through Playwright): the guided
+story, free chat, the team inbox and the phone layout. Skipped when Playwright or a browser is
+not available."""
 from __future__ import annotations
 
 from typing import Any
@@ -39,121 +40,134 @@ def site():
     server.should_exit = True
 
 
-@pytest.fixture
-def page(browser, site):
-    context = browser.new_context(viewport={"width": 1440, "height": 900})
+def open_page(browser, url, width=1440, height=900, mobile=False):
+    context = browser.new_context(viewport={"width": width, "height": height}, is_mobile=mobile, has_touch=mobile)
     page = context.new_page()
     errors: list[str] = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-    page.goto(site + "/")
-    page.locator(".starter").first.wait_for()
+    page.goto(url + "/")
+    page.get_by_role("button", name="Start the demo").wait_for()
+    return context, page, errors
+
+
+@pytest.fixture
+def page(browser, site):
+    context, page, errors = open_page(browser, site)
     yield page
     context.close()
     assert errors == []
 
 
-def last_bot(page) -> Any:
-    bots = page.locator(".msg.bot")
-    return bots.nth(bots.count() - 1)
+def button(page, name):
+    return page.get_by_role("button", name=name, exact=True)
 
 
-def test_the_page_opens_with_starters_and_the_guided_mode_when_no_key_is_set(page):
-    assert page.locator(".starter").count() == 8
-    assert page.locator("#mode-live").is_disabled() and page.locator("#mode-guided").get_attribute("aria-pressed") == "true"
-    assert "No requests yet" in page.locator("#tab-body").inner_text()
-    assert "What the code enforces" in page.locator("#tab-body").inner_text()
+def test_the_first_screen_says_what_it_is_and_offers_one_step(page):
+    assert "It answers your customers. Your team approves the money." in page.locator("#story").inner_text()
+    assert page.locator(".story-actions button").count() == 2  # Start, and Skip to free chat
+    assert page.evaluate("getComputedStyle(document.querySelector('.layout')).pointerEvents") == "none"
+    assert "fictional" in page.locator("body").inner_text().lower()
 
 
-def test_customer_asks_team_approves_customer_sees_the_update(page):
-    page.get_by_role("button", name="Return a jacket").click()
-    page.locator(".card .btn.primary").wait_for()
-    assert "$182.05" in last_bot(page).inner_text()
-    assert page.locator(".msg.bot .step").count() == 3
-    assert page.locator("#badge-approvals").inner_text() == "1"
-    page.locator(".card .btn.primary").click()
-    notice = page.locator(".notice.approved")
-    notice.wait_for()
-    assert "$182.05" in notice.inner_text() and page.locator(".pill.approved").count() == 1
-    assert page.locator("#badge-approvals").is_hidden()
+def test_the_whole_story_in_six_steps(page):
+    button(page, "Start the demo").click()
+    button(page, "Send Maya's message").click()
+    page.locator(".story-title", has_text="Your turn: approve the refund.").wait_for()
+    card = page.locator(".req").first
+    assert "$182.05" in card.inner_text() and "Return fee" in card.inner_text() and "Worked out by the store's code" in card.inner_text()
+    assert "ring" in (button(page, "Approve refund").get_attribute("class") or "")
+    button(page, "Approve refund").click()
+    page.locator(".story-title", has_text="Maya hears back.").wait_for()
+    assert "$182.05" in page.locator(".event").inner_text()
+    button(page, "Next: try to trick it").click()
+    button(page, "Send the trick").click()
+    page.locator(".story-title", has_text="The trick got nothing.").wait_for()
+    assert "Refunds created: 0" in page.locator("#story").inner_text()
+    assert "Earlier in this demo" in page.locator("#panel").inner_text()  # Maya's approved return stays visible
+    button(page, "Next: catch a bad reply").click()
+    button(page, "Send the bad draft").click()
+    page.locator(".story-title", has_text="Stopped before the customer saw it.").wait_for()
+    assert "A draft was stopped by a check" in page.locator("#thread").inner_text()
+    assert "$50.00 store credit" not in page.locator("#thread").inner_text()
+    assert "$50.00 store credit" in page.locator(".held-box").inner_text()
+    button(page, "See what it cost").click()
+    assert "Cost shows when the live AI answers" in page.locator("#story").inner_text()  # this server has no key
+    button(page, "Try it yourself").click()
+    page.locator(".story-title", has_text="Ask anything a customer would").wait_for()
+    assert not page.locator("#input").is_disabled() and page.locator(".chip").count() >= 6
 
 
-def test_rejecting_needs_a_reason(page):
-    page.get_by_role("button", name="Cancel an order").click()
-    page.locator(".card .btn.danger").wait_for()
-    page.locator(".card .btn.danger").click()
-    assert "reason" in page.locator("#toast").inner_text().lower()
-    page.locator(".note-input").fill("This order already left our warehouse.")
-    page.locator(".card .btn.danger").click()
-    page.locator(".notice.rejected").wait_for()
-    assert "already left our warehouse" in page.locator(".notice.rejected").inner_text()
+def test_no_jargon_while_under_the_hood_is_closed(page):
+    button(page, "Start the demo").click()
+    button(page, "Send Maya's message").click()
+    page.locator(".story-title", has_text="Your turn").wait_for()
+    visible = page.evaluate("document.body.innerText").lower()
+    for word in ("token", "tool call", "guided", "handoff", "r-1", "t-1", "simulation"):
+        assert word not in visible, word
 
 
-def test_a_hand_off_lets_the_team_reply_and_hand_back(page):
-    page.get_by_role("button", name="Arrived damaged").click()
-    page.locator(".reply-input").wait_for()
-    assert page.locator(".tabs [data-tab=handoffs]").get_attribute("aria-selected") == "true"
-    page.locator(".reply-input").fill("Hi Priya, Jordan here. Could you send a photo of the stove and the box?")
-    page.get_by_role("button", name="Send reply").click()
-    page.locator(".msg.teammate").wait_for()
-    assert "Jordan" in page.locator(".msg.teammate").inner_text()
-    assert page.locator("#input").get_attribute("placeholder") == "Write to the team"
-    page.get_by_role("button", name="Hand back to the assistant").click()
-    page.locator(".notice.back_to_ai").wait_for()
+def test_rejecting_needs_a_reason_shown_in_the_card(page):
+    button(page, "Start the demo").click()
+    button(page, "Send Maya's message").click()
+    page.locator(".story-title", has_text="Your turn").wait_for()
+    button(page, "Reject").click()
+    assert "Write a short reason" in page.locator(".field-error").inner_text()
+    page.locator(".req .input").fill("The tags were removed.")
+    button(page, "Reject").click()
+    page.locator(".event.rejected").wait_for()
+    assert "The tags were removed." in page.locator(".event.rejected").inner_text()
 
 
-def test_sources_open_to_show_the_quoted_policy(page):
+def test_free_chat_with_the_test_customer_and_sources(page):
+    page.get_by_role("button", name="Skip to free chat").click()
+    button(page, "Use these").click()
+    assert "#1042" in page.locator("#input").input_value()
     page.locator("#input").fill("Do you ship to the UK?")
     page.locator("#input").press("Enter")
-    page.locator(".src").wait_for()
-    page.locator(".src").first.click()
+    page.locator(".source").wait_for()
+    page.locator(".source").first.click()
     assert "United States and Canada" in page.locator(".quote").inner_text()
 
 
-def test_the_chat_survives_a_reload_and_new_chat_resets_the_store(page):
-    page.get_by_role("button", name="Return a jacket").click()
-    page.locator(".card").first.wait_for()
+def test_the_page_keeps_its_place_after_a_reload(page):
+    button(page, "Start the demo").click()
+    button(page, "Send Maya's message").click()
+    page.locator(".story-title", has_text="Your turn").wait_for()
     page.reload()
-    page.locator(".card").first.wait_for()
-    assert page.locator(".msg.customer").count() == 1
-    page.locator("#new-chat").click()
-    page.locator(".starter").first.wait_for()
-    assert page.locator(".card:not(.guard)").count() == 0
+    page.locator(".story-title", has_text="Your turn").wait_for()
+    assert page.locator(".req").count() == 1
 
 
-def test_on_a_phone_the_customer_and_team_views_switch(browser, site):
-    context = browser.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
-    page = context.new_page()
-    page.goto(site + "/")
-    page.locator(".starter").first.wait_for()
-    assert page.locator("#pane-team").is_hidden() and page.locator(".switcher").is_visible()
-    page.get_by_role("button", name="Where is my order?").click()
-    last_bot(page).wait_for()
-    page.get_by_role("button", name="Team inbox").click()
-    assert page.locator("#pane-team").is_visible() and page.locator("#pane-customer").is_hidden()
-    width = page.evaluate("document.documentElement.scrollWidth")
-    assert width <= 390
+def test_on_a_phone_the_story_sits_at_the_bottom_and_switches_views(browser, site):
+    context, page, errors = open_page(browser, site, 390, 844, mobile=True)
+    button(page, "Start the demo").click()
+    button(page, "Send Maya's message").click()
+    page.locator(".story-title", has_text="Your turn").wait_for()
+    assert page.locator(".team-pane").is_visible() and page.locator(".customer-pane").is_hidden()
+    assert page.evaluate("document.documentElement.scrollWidth") <= 390
+    box = page.locator("[data-approve]").bounding_box()
+    sheet = page.locator("#story").bounding_box()
+    assert box and sheet and box["y"] + box["height"] <= sheet["y"]  # Approve is not under the story sheet
+    button(page, "Approve refund").click()
+    page.locator(".story-title", has_text="Maya hears back.").wait_for()
+    assert page.locator(".customer-pane").is_visible()
     context.close()
+    assert errors == []
 
 
-def test_with_a_live_model_the_reply_shows_the_model_and_its_cost(browser):
-    live = ScriptedModel([tool(1, "search_help_center", query="ship to UK")],
-                         [text("We only ship to the US and Canada for now.")])
+def test_with_a_live_model_the_reply_is_marked_ai_and_the_inbox_shows_the_cost(browser):
+    live = ScriptedModel([tool(1, "search_help_center", query="ship to UK")], [text("We only ship to the US and Canada for now.")])
     url, server = start_server(Agent(live=live))
     try:
-        context = browser.new_context(viewport={"width": 1440, "height": 900})
-        page = context.new_page()
-        page.goto(url + "/")
-        page.locator(".starter").first.wait_for()
-        assert page.locator("#mode-live").get_attribute("aria-pressed") == "true"
-        assert "Claude Haiku 5.5" in page.locator("#mode-live").inner_text()
+        context, page, errors = open_page(browser, url)
+        page.get_by_role("button", name="Skip to free chat").click()
         page.locator("#input").fill("Do you ship to the UK?")
         page.locator("#input").press("Enter")
-        last_bot(page).wait_for()
-        meta = last_bot(page).inner_text()
-        assert "Claude Haiku 5.5 · $0.0" in meta and "Searched the help center" in meta
-        page.get_by_role("tab", name="Cost").click()
-        assert "AI cost of this chat so far" in page.locator("#tab-body").inner_text()
+        page.locator(".bot .tag", has_text="AI").wait_for()
+        assert "AI cost of this chat: $0.0" in " ".join(page.locator("#cost-line").inner_text().split())
+        assert "Checked the help center" in page.locator("#thread").inner_text()
         context.close()
+        assert errors == []
     finally:
         server.should_exit = True

@@ -253,6 +253,7 @@ def _assistant(r: Replay, event: dict[str, Any]) -> None:
     _count(r, mode, model, usage, event.get("ms"))
     if isinstance(event.get("note"), str):
         r.transcript.append({"kind": "system", "text": event["note"][:300]})
+    simulated = event.get("simulated") is True
     calls = [b for b in blocks if b["type"] == "tool_use"]
     if calls:
         was_paused = r.state.ai_paused
@@ -298,6 +299,7 @@ def _assistant(r: Replay, event: dict[str, Any]) -> None:
         r.messages[-1]["content"] = [{"type": "text", "text": HELD_REPLY}]  # what the customer actually saw
         r.stats["held"] += 1
         _reply(r, HELD_REPLY, [], mode, model, held=True, problems=problems, draft=text or None)
+        r.transcript[-1]["simulated"] = simulated
     else:
         _reply(r, text, citations, mode, model, checked=checked)
     r.awaiting = False
@@ -346,8 +348,10 @@ def _team(r: Replay, event: dict[str, Any], strict: bool) -> None:
     try:
         if action in ("approve", "reject"):
             request = state.decide(str(event.get("request_id", ""))[:12], action == "approve", str(event.get("note") or ""))
-            update = (f"<store_update>The team {request['status']} request {request['id']} "
-                      f"({request['kind'].replace('_', ' ')}, order #{request['order']}).</store_update>")
+            kind = {"return": "return", "cancellation": "cancellation", "address_change": "address change"}[request["kind"]]
+            update = (f"<store_update>The team {request['status'].upper()} the {kind} request for order #{request['order']}. "
+                      f"This is now its status; if the customer asks, tell them. The customer was told: "
+                      f"{state.notices[-1]['text']}</store_update>")
         elif action == "reply":
             if state.open_ticket() is None:
                 raise StoreError("no_open_ticket", "Replies are for chats that are with the team.")
@@ -370,6 +374,37 @@ def _team(r: Replay, event: dict[str, Any], strict: bool) -> None:
 
 
 # ---------------------------------------------------------------------------- what the page shows
+REASONS = {"changed_mind": "changed their mind", "wrong_size": "too small or too big", "defective": "defective",
+           "wrong_item": "wrong item sent", "other": "other reason"}
+
+
+def _card_words(req: dict[str, Any], order: dict[str, Any]) -> dict[str, Any]:
+    """Plain words for the team's card: a heading, the money worked out line by line, the button."""
+    d = req["details"]
+    name = order["address"]["name"]
+    if req["kind"] == "return" and d["resolution"] == "refund":
+        rows = [[f"{li['product']} ({li['size']})" + (f" x {li['qty']}" if li["qty"] > 1 else ""), money(li["price"] * li["qty"])]
+                for li in d["lines"]]
+        if d["fee"]:
+            rows.append(["Return fee", money(-d["fee"])])
+        shipping = req["amount"] - sum(li["price"] * li["qty"] for li in d["lines"]) + d["fee"]
+        if shipping > 0:
+            rows.append(["Original shipping", money(shipping)])
+        return {"heading": f"Return · {name} · order #{req['order']}", "why": REASONS.get(d["reason"], d["reason"]),
+                "breakdown": rows, "total_label": "Refund", "approve_label": "Approve refund"}
+    if req["kind"] == "return":
+        line = d["lines"][0]
+        return {"heading": f"Exchange · {name} · order #{req['order']}", "why": REASONS.get(d["reason"], d["reason"]),
+                "breakdown": [[f"{line['product']}", f"size {line['size']} for size {d['exchange_size']}"]],
+                "total_label": None, "approve_label": "Approve exchange"}
+    if req["kind"] == "cancellation":
+        rows = [[f"{li['name']}" + (f" x {li['qty']}" if li["qty"] > 1 else ""), money(li["price"] * li["qty"])] for li in order["lines"]]
+        return {"heading": f"Cancellation · {name} · order #{req['order']}", "why": d["reason"] or "not given",
+                "breakdown": rows, "total_label": "Refund", "approve_label": "Approve cancellation"}
+    return {"heading": f"Address change · {name} · order #{req['order']}", "why": None, "breakdown": [],
+            "total_label": None, "approve_label": "Approve change"}
+
+
 def view(r: Replay) -> dict[str, Any]:
     state = r.state
     transcript = list(r.transcript)
@@ -398,6 +433,7 @@ def view(r: Replay) -> dict[str, Any]:
             item["title"] = f"New address for order #{req['order']}"
             item["lines"] = [f"From: {state.address_line(d['old'])}", f"To: {state.address_line(d['new'])}"]
             item["detail"] = "Check the new address with the customer if anything looks unusual."
+        item.update(_card_words(req, order))
         requests.append(item)
     orders = [{"number": o["number"], "customer": o["address"]["name"], "placed": nice_date(o["placed"]),
                "status": state.status_text(o), "total": money(o["total"]),

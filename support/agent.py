@@ -14,7 +14,7 @@ from datetime import date
 from typing import Any
 
 from .helpcenter import HelpCenter
-from .models import SIMULATION, GuidedModel, Model, ModelUnavailable, Turn
+from .models import BAD_DRAFT, SIMULATION, GuidedModel, Model, ModelUnavailable, Turn
 from .prompts import SYSTEM_PROMPT
 from .session import (
     MAX_CUSTOMER_MESSAGES,
@@ -36,15 +36,15 @@ from .tools import TOOLS
 COOLDOWN = {"budget": 15 * 60, "auth": 15 * 60, "rate_limited": 30, "error": 30}
 MAX_PROMPT_CHARS = 120_000  # about 30K tokens: far below Haiku 5.5's higher price above 100K
 NOTES = {
-    "budget": "The live AI has used its demo budget for now, so replies come from the guided demo (fixed rules, no AI).",
-    "auth": "The live AI is not available right now, so replies come from the guided demo (fixed rules, no AI).",
-    "rate_limited": "The live AI is busy, so this reply comes from the guided demo (fixed rules, no AI).",
-    "error": "The live AI did not respond in time, so this reply comes from the guided demo (fixed rules, no AI).",
-    "invalid": "The live AI could not take this step, so it comes from the guided demo (fixed rules, no AI).",
-    "empty": "The live AI sent an empty reply, so this one comes from the guided demo (fixed rules, no AI).",
-    "visitor_limit": "You've sent a lot of messages, so the next replies come from the guided demo (fixed rules, no AI).",
-    "too_long": "This chat is now too long for the live demo, so replies come from the guided demo (fixed rules, no AI).",
-    "busy": "The live demo is very busy right now, so replies come from the guided demo (fixed rules, no AI).",
+    "budget": "The live AI is resting for now, so fixed rules are answering. Checks and approvals work the same way.",
+    "auth": "The live AI is unavailable right now, so fixed rules are answering. Checks and approvals work the same way.",
+    "rate_limited": "The live AI is busy, so fixed rules answered this one. Checks and approvals work the same way.",
+    "error": "The live AI didn't answer in time, so fixed rules answered this one. Checks and approvals work the same way.",
+    "invalid": "The live AI couldn't take this step, so fixed rules answered it. Checks and approvals work the same way.",
+    "empty": "The live AI sent an empty reply, so fixed rules answered this one.",
+    "visitor_limit": "You've sent a lot of messages, so fixed rules answer for now. Checks and approvals work the same way.",
+    "too_long": "This chat is long for the live demo, so fixed rules answer from here. Start a new chat for the live AI.",
+    "busy": "The live demo is very busy, so fixed rules are answering. Checks and approvals work the same way.",
 }
 
 
@@ -100,7 +100,13 @@ class Agent:
             events.append(event)
         else:
             raise ActionError("Unknown action.")
-        if call_model:
+        if call_model and kind == "customer" and action.get("simulate") == "bad_draft":
+            # The demo shows the reply checks at work: a draft that invents a credit, written on purpose.
+            draft: dict[str, Any] = {"type": "assistant", "content": [{"type": "text", "text": BAD_DRAFT}], "stop_reason": "end_turn",
+                     "model": "simulation", "mode": "guided", "usage": {}, "ms": 0, "simulated": True}
+            apply(replay, draft)
+            events.append(draft)
+        elif call_model:
             events.append(self._step(replay, want_live, visitor_allowed, limit_note))
         return {"session": signed({"v": 1, "started": session["started"], "events": events}), "view": view(replay),
                 "more": replay.awaiting}

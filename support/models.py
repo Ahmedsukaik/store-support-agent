@@ -371,8 +371,8 @@ class GuidedModel:
         if name == "find_products":
             return [_text(_product_answer(data, text))]
         if name == "hand_off_to_human":
-            return [_text("I've passed this to our support team" + (f" (ticket {data['ticket_id']})" if "ticket_id" in data else "")
-                          + ". A person will reply right here in this chat. Our team works Monday to Friday, 8 am to 6 pm Pacific time.")]
+            return [_text("I've passed this to our support team. A person will reply right here in this chat. Our team works "
+                          "Monday to Friday, 8 am to 6 pm Pacific time.")]
         if result.get("is_error"):
             message = data.get("message", "That isn't possible.")
             if "hand" in message.lower() and "person" in message.lower():
@@ -384,15 +384,15 @@ class GuidedModel:
             offer = " I can pass this to our team if you'd like them to take a look." if "person" in message.lower() else ""
             return [_text(f"I'm sorry, I can't do that. {_customer_part(message)}{offer}")]
         if name == "request_cancellation":
-            return [_text(f"{hi}I've asked our team to cancel order #{call['input']['order_number']} (request {data['request_id']}). "
+            return [_text(f"{hi}I've asked our team to cancel order #{call['input']['order_number']}. "
                           f"They usually confirm within 2 business hours, and the order won't ship while the request is open. "
                           f"If it's approved, {data['refund_if_approved']} goes back to your original payment method.")]
         if name == "request_return":
             if "exchange_for_size" in data:
-                return [_text(f"{hi}I've sent your exchange request for size {data['exchange_for_size']} to our team "
-                              f"(request {data['request_id']}). {data['next_step']}")]
+                return [_text(f"{hi}I've sent your exchange request for size {data['exchange_for_size']} to our team. "
+                              f"{data['next_step']}")]
             fee = f", after the {data['return_fee_deducted']} return shipping fee" if data.get("return_fee_deducted") else ""
-            return [_text(f"{hi}I've sent your return request to our team (request {data['request_id']}). If it's approved, "
+            return [_text(f"{hi}I've sent your return request to our team. If it's approved, "
                           f"your refund will be {data['refund_if_approved']}{fee}, back to your original payment method "
                           f"5 to 7 business days after the return arrives. {data['next_step']}")]
         if name == "get_order":

@@ -1,6 +1,6 @@
-"""Record the demo tour and the README images from a running demo.
+"""Record the demo story and the README images from a running demo.
 
-    python demo.py                                   (in another terminal)
+    python demo.py                                   (in another terminal), or a deployed URL
     python docs/make_media.py http://127.0.0.1:8300
 
 Needs Playwright with an installed Chrome or Edge, and ffmpeg on the PATH for the GIF.
@@ -26,15 +26,34 @@ def main(url: str) -> None:
         browser = p.chromium.launch(channel="chrome")
         context = browser.new_context(viewport=SIZE, device_scale_factor=1, record_video_dir=tmp, record_video_size=SIZE)
         page = context.new_page()
+        click = lambda name: page.get_by_role("button", name=name, exact=True).click()  # noqa: E731
         page.goto(url + "/")
-        page.locator(".starter").first.wait_for()
+        page.get_by_role("button", name="Start the demo").wait_for()
+        page.wait_for_timeout(2200)
+        page.screenshot(path=str(OUT / "screen-intro.png"))
+        click("Start the demo")
         page.wait_for_timeout(1500)
-        page.locator("#play-tour").click()
-        page.locator(".notice.approved").wait_for(timeout=60000)
-        page.wait_for_timeout(3500)
+        click("Send Maya's message")
+        page.locator(".story-title", has_text="Your turn").wait_for(timeout=90000)
+        page.wait_for_timeout(2600)
+        page.screenshot(path=str(OUT / "screen-approve.png"))
+        click("Approve refund")
+        page.locator(".story-title", has_text="Maya hears back").wait_for()
+        page.wait_for_timeout(3200)
         page.screenshot(path=str(OUT / "screen-approved.png"))
-        page.get_by_role("tab", name="Cost").click()
-        page.wait_for_timeout(1800)
+        click("Next: try to trick it")
+        page.wait_for_timeout(1200)
+        click("Send the trick")
+        page.get_by_role("button", name="Next: catch a bad reply").wait_for(timeout=90000)
+        page.wait_for_timeout(3000)
+        click("Next: catch a bad reply")
+        page.wait_for_timeout(1200)
+        click("Send the bad draft")
+        page.get_by_role("button", name="See what it cost").wait_for(timeout=90000)
+        page.wait_for_timeout(3200)
+        page.screenshot(path=str(OUT / "screen-held.png"))
+        click("See what it cost")
+        page.wait_for_timeout(3500)
         page.screenshot(path=str(OUT / "screen-cost.png"))
         video = page.video.path() if page.video else None
         context.close()

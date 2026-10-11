@@ -177,7 +177,7 @@ def test_a_refusal_goes_back_to_the_model_as_an_error_with_the_reason(maya):
     result = run_tool(maya, HC, "request_return", {"order_number": "1042", "items": [{"line_id": "L2", "quantity": 1}],
                                                    "reason": "changed_mind", "resolution": "refund"})
     data = json.loads(result.content)
-    assert result.is_error and data["error"] == "final_sale" and result.label.startswith("Refused: ")
+    assert result.is_error and data["error"] == "final_sale" and result.label.startswith("Not allowed: ")
 
 
 def test_items_that_are_not_objects_are_ignored(maya):
@@ -187,13 +187,13 @@ def test_items_that_are_not_objects_are_ignored(maya):
 
 
 def test_labels_say_what_happened(state):
-    assert run_tool(state, HC, "verify_customer", {"order_number": "#1042", "email": MAYA}).label == "Verified Maya with order #1042"
+    assert run_tool(state, HC, "verify_customer", {"order_number": "#1042", "email": MAYA}).label == "Email matches order #1042"
     assert run_tool(state, HC, "get_order", {"order_number": "1042"}).label == "Opened order #1042"
     label = run_tool(state, HC, "request_return", {"order_number": "1042", "items": [{"line_id": "L1", "quantity": 1}],
                                                    "reason": "wrong_size", "resolution": "refund"}).label
-    assert label == "Sent return request R-1 for team review (refund $182.05)"
+    assert label == "Return request sent to your team (refund $182.05)"
     assert run_tool(state, HC, "hand_off_to_human", {"reason": "customer_asked", "summary": "x", "priority": "normal"}).label \
-        == "Passed the chat to the team (T-1)"
+        == "Passed to a person on your team"
 
 
 def test_help_center_results_are_search_result_blocks_with_citations(state):

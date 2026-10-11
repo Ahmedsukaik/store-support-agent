@@ -2,117 +2,110 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Store Support Agent: live demo</title>
-<meta name="description" content="A customer support AI agent for an online store, with a human approval inbox. Reference build on a fictional store.">
+<meta name="description" content="An AI support agent for an online store. It answers customers; a person on the team approves every refund. A one minute demo on a fictional store.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f5c46'/%3E%3Cpath d='M9 22c0-8 6-13 14-13-1 8-6 13-14 13z' fill='%23f4c27a'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f7a55'/%3E%3Cpath d='M8 24c0-10 7-16 17-16-1 10-7 16-17 16z' fill='%23fff'/%3E%3C/svg%3E">
 </head>
-<body>
-<header class="topbar">
-  <div class="brand">
-    <span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8"/><path d="M9 22c0-8 6-13 14-13-1 8-6 13-14 13z"/></svg></span>
-    <div>
-      <h1 class="brand-name">Store Support Agent</h1>
-      <div class="brand-sub">Reference build on a fictional demo store</div>
-    </div>
-  </div>
-  <div class="top-actions">
-    <div class="mode" role="group" aria-label="Who answers">
-      <button type="button" id="mode-live" class="mode-btn" aria-pressed="true"><span class="dot"></span><span id="mode-live-label">Live AI</span></button>
-      <button type="button" id="mode-guided" class="mode-btn" aria-pressed="false">Guided (no AI)</button>
-    </div>
-    <button type="button" id="top-tour" class="ghost-btn tour-top" title="Play the 20 second tour">Tour</button>
-    <button type="button" id="new-chat" class="ghost-btn" title="Start again with a fresh store">New chat</button>
-  </div>
-</header>
+<body class="app-body in-story" data-step="0" data-pane="customer" data-focus="customer">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="leaf" viewBox="0 0 24 24"><path d="M4.5 19.5C4.5 11 10.5 5 20 4.5 19.5 13.5 13 19.5 4.5 19.5Z"/><path d="M4.5 19.5 12.5 11.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".55"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 5-5.5"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="x-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></symbol>
+  <symbol id="refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></symbol>
+  <symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.7-3.5 3.3-5.5 6.5-5.5s5.8 2 6.5 5.5"/><path d="M15.5 4.7a3.5 3.5 0 0 1 0 6.6"/><path d="M17.8 14.9c1.9.7 3.2 2.4 3.7 5.1"/></symbol>
+  <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.9-3.8 3.9-6 7.5-6s6.6 2.2 7.5 6"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.6c0 4.5 3.1 8.1 7.5 9.4 4.4-1.3 7.5-4.9 7.5-9.4V6Z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="flask" viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6.2L4.9 18a2 2 0 0 0 1.7 3h10.8a2 2 0 0 0 1.7-3L14 9.2V3"/><path d="M7.3 15h9.4"/></symbol>
+  <symbol id="arrow-up" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5.5 11.5 6.5-6.5 6.5 6.5"/></symbol>
+  <symbol id="headset" viewBox="0 0 24 24"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><path d="M4 15h2.5A1.5 1.5 0 0 1 8 16.5v2A1.5 1.5 0 0 1 6.5 20h-1A1.5 1.5 0 0 1 4 18.5Z"/><path d="M20 15h-2.5a1.5 1.5 0 0 0-1.5 1.5v2a1.5 1.5 0 0 0 1.5 1.5h1a1.5 1.5 0 0 0 1.5-1.5Z"/></symbol>
+  <symbol id="undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></symbol>
+  <symbol id="chev-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="chev-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><path d="M10.3 4 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0Z"/><path d="M12 9.5v4M12 17h.01"/></symbol>
+  <symbol id="package" viewBox="0 0 24 24"><path d="M12 3 3.5 7.5v9L12 21l8.5-4.5v-9Z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
+  <symbol id="inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5"/><path d="M5.6 5h12.8l2.6 8v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z"/></symbol>
+  <symbol id="code" viewBox="0 0 24 24"><path d="m8 8-4 4 4 4M16 8l4 4-4 4"/></symbol>
+  <symbol id="cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9.5 9.5h5v5h-5zM9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+</svg>
 
-<nav class="switcher" aria-label="Views">
-  <button type="button" data-pane="customer" aria-pressed="true">Customer view</button>
-  <button type="button" data-pane="team" aria-pressed="false">Team inbox <span class="badge" id="switch-badge" hidden></span></button>
-</nav>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg><use href="#leaf"/></svg></span>
+      <div class="brand-text">
+        <h1 class="brand-name">Store Support Agent</h1>
+        <div class="brand-sub">Reference build on a fictional demo store</div>
+      </div>
+    </div>
+    <div></div>
+    <div class="top-actions">
+      <span class="pill pill-demo pill-plain desk-only">Reference build</span>
+      <button type="button" class="btn btn-ghost btn-sm" id="replay" aria-label="Replay the demo" hidden><svg class="i i-sm" aria-hidden="true"><use href="#refresh"/></svg><span>Replay the demo</span></button>
+      <a class="btn btn-ghost btn-sm" href="https://github.com/Ahmedsukaik/store-support-agent" target="_blank" rel="noopener" aria-label="Source code"><svg class="i i-sm" aria-hidden="true"><use href="#code"/></svg><span>Source code</span></a>
+    </div>
+  </header>
 
-<main class="layout">
-  <section class="store pane" id="pane-customer" aria-label="What the customer sees">
-    <div class="pane-label"><span>What the customer sees</span></div>
-    <div class="howto" id="howto">
-      <ol>
-        <li><b>Chat</b>&nbsp;as a customer</li>
-        <li><b>Approve</b>&nbsp;in the team inbox</li>
-        <li><b>Watch</b>&nbsp;the customer get the update</li>
-      </ol>
-      <span class="howto-actions">
-        <button type="button" class="play-btn" id="play-tour"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4 2.5v11l9-5.5z"/></svg>Play the 20 second tour</button>
-        <button type="button" class="link-btn" id="show-people" aria-expanded="false" aria-controls="people">Sample customers</button>
-      </span>
-      <div class="people" id="people" hidden></div>
-      <button type="button" class="close-btn" id="hide-howto" aria-label="Hide these tips">&times;</button>
-    </div>
-    <div class="stage">
-    <div class="shop" aria-hidden="true">
-      <div class="shop-nav">
-        <span class="shop-logo">Copperleaf <em>Outdoor</em></span>
-        <span class="shop-links"><span>Jackets</span><span>Packs</span><span>Tents</span><span>Camp kitchen</span></span>
-      </div>
-      <div class="hero">
-        <div>
-          <div class="hero-kicker">New season</div>
-          <div class="hero-title">Gear for wet trails<br>and long weekends</div>
-          <div class="hero-sub">Free standard shipping from $75. Returns within 30 days.</div>
-        </div>
-        <svg class="hero-art" viewBox="0 0 320 160"><path d="M0 150 L70 60 L110 105 L170 30 L240 120 L270 90 L320 150 Z" class="m1"/><path d="M0 160 L90 95 L150 140 L220 80 L320 160 Z" class="m2"/><circle cx="262" cy="38" r="16" class="sun"/></svg>
-      </div>
-      <div class="products" id="products"></div>
-    </div>
-
-    <div class="chat" id="chat" role="region" aria-label="Store chat">
-      <div class="chat-head">
-        <div class="avatar" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 22c0-8 6-13 14-13-1 8-6 13-14 13z"/></svg></div>
-        <div>
-          <h2 class="chat-title">Copperleaf support</h2>
-          <div class="chat-status" id="chat-status">Assistant online. A person reviews every refund.</div>
-        </div>
-      </div>
-      <div class="messages" id="messages"></div>
-      <div class="suggestions" id="suggestions" role="group" aria-label="Suggested questions"></div>
-      <form class="composer" id="composer">
-        <label for="input" class="sr-only">Message</label>
-        <textarea id="input" rows="1" maxlength="800" dir="auto" placeholder="Ask about an order, a return or a product" autocomplete="off"></textarea>
-        <button type="submit" id="send" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11.5 20 4l-6.5 17-2.6-7.1z"/></svg></button>
-      </form>
-    </div>
-    </div>
+  <section class="story" id="story" aria-labelledby="story-title" tabindex="-1">
+    <div class="story-main" id="story-main"></div>
+    <div class="story-actions" id="story-actions"></div>
   </section>
 
-  <section class="team pane" id="pane-team" aria-label="What the support team sees">
-    <div class="pane-label"><span>What your team sees</span></div>
-    <div class="team-head">
-      <div>
+  <div class="switch-row phone-only" id="switch-row">
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" data-pane="customer" aria-pressed="true">Customer</button>
+      <button type="button" data-pane="team" aria-pressed="false">Team inbox <span class="count" id="switch-count" hidden></span></button>
+    </div>
+  </div>
+
+  <main class="layout">
+    <section class="customer-pane" aria-label="What your customer sees">
+      <div class="pane-eyebrow"><svg class="i" aria-hidden="true"><use href="#user"/></svg>What your customer sees</div>
+      <div class="messenger" role="region" aria-label="Store chat">
+        <div class="m-head">
+          <span class="avatar online" aria-hidden="true"><svg><use href="#leaf"/></svg></span>
+          <div>
+            <h2 class="m-title">Copperleaf Outdoor</h2>
+            <div class="m-status" id="chat-status">Fictional store &middot; assistant online</div>
+          </div>
+        </div>
+        <div class="thread" id="thread"></div>
+        <div class="thread-fade" aria-hidden="true"></div>
+        <div class="suggest" id="suggest" role="group" aria-label="Suggested questions"></div>
+        <form class="composer" id="composer">
+          <div class="composer-box">
+            <label for="input" class="sr-only">Message</label>
+            <textarea id="input" rows="1" maxlength="800" dir="auto" placeholder="Ask about an order, a return or a product" autocomplete="off"></textarea>
+            <button type="submit" class="send" id="send" aria-label="Send"><svg class="i" aria-hidden="true"><use href="#arrow-up"/></svg></button>
+          </div>
+        </form>
+      </div>
+      <p class="fiction-note">Copperleaf Outdoor is fictional. Every name, order and email is made up.</p>
+    </section>
+
+    <section class="team-pane" aria-label="What your team sees">
+      <div class="team-head">
+        <div class="pane-eyebrow"><svg class="i" aria-hidden="true"><use href="#users"/></svg>What your team sees</div>
         <h2 class="team-title">Team inbox</h2>
-        <div class="team-sub">Every refund, cancellation and address change waits here for a person.</div>
+        <p class="team-desc">Every refund, cancellation and address change waits here for a person.</p>
+        <p class="cost-line" id="cost-line" hidden></p>
       </div>
-    </div>
-    <div class="tabs" role="tablist">
-      <button type="button" role="tab" id="tab-approvals" aria-controls="tab-body" data-tab="approvals" aria-selected="true">Approvals <span class="badge" id="badge-approvals" hidden></span></button>
-      <button type="button" role="tab" id="tab-handoffs" aria-controls="tab-body" data-tab="handoffs" aria-selected="false">Handoffs <span class="badge" id="badge-handoffs" hidden></span></button>
-      <button type="button" role="tab" id="tab-stats" aria-controls="tab-body" data-tab="stats" aria-selected="false">Cost</button>
-      <button type="button" role="tab" id="tab-orders" aria-controls="tab-body" data-tab="orders" aria-selected="false">Orders</button>
-      <button type="button" role="tab" id="tab-activity" aria-controls="tab-body" data-tab="activity" aria-selected="false">Activity</button>
-    </div>
-    <div class="tab-body" id="tab-body" role="tabpanel" tabindex="-1" aria-labelledby="tab-approvals"></div>
-  </section>
-</main>
+      <div class="panel" id="panel" tabindex="-1"></div>
+    </section>
+  </main>
+</div>
 
-<footer class="foot">
-  A reference build: Copperleaf Outdoor is fictional, and every name, order and email is made up.
-  Each visitor gets a private copy of the store that resets with a new chat.
-  <a href="https://github.com/Ahmedsukaik/store-support-agent" rel="noopener" target="_blank">Source code</a>
-</footer>
-
-<div class="toast" id="toast" role="status" hidden></div>
+<div class="toast toast-fixed" id="toast" role="status" hidden></div>
+<div class="side-label" id="side-label" hidden></div>
 <div class="sr-only" id="announce" aria-live="polite"></div>
 <script src="app.js"></script>
 </body>

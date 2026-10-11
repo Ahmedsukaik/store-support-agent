@@ -202,7 +202,7 @@ class StoreState:
                     date.fromordinal(date.fromisoformat(ship["delivered"]).toordinal() + DAMAGE_REPORT_DAYS).isoformat())
         open_requests = [r for r in self.requests if r["order"] == order["number"] and r["status"] == "pending"]
         if open_requests:
-            view["open_requests"] = [{"request_id": r["id"], "type": r["kind"], "status": "waiting for team review"}
+            view["open_requests"] = [{"type": r["kind"].replace("_", " "), "status": "waiting for team review"}
                                      for r in open_requests]
         self.log("assistant", "get_order", f"order #{order['number']}")
         return view
@@ -357,7 +357,7 @@ class StoreState:
         d = request["details"]
         self.log("assistant", "request_return", f"order #{order['number']}, {d['resolution']}, {d['reason']}",
                  f"{request['id']} pending")
-        result: dict[str, Any] = {"request_id": request["id"], "status": "waiting for team review",
+        result: dict[str, Any] = {"status": "sent to the team, waiting for their review",
                                   "next_step": f"A person on the team reviews it, usually within one business day. Once it is "
                                                f"approved, a prepaid return label is emailed to {mask_email(order['email'])}."}
         if d["resolution"] == "refund":
@@ -382,7 +382,7 @@ class StoreState:
             [("Customer verified with order number and email", True), ("Order not shipped yet", True)],
             [f"Refunds on this order over {money(MANAGER_REVIEW_OVER)}: needs a manager"] if order["total"] > MANAGER_REVIEW_OVER else [])
         self.log("assistant", "request_cancellation", f"order #{order['number']}", f"{request['id']} pending")
-        return {"request_id": request["id"], "status": "waiting for team review", "refund_if_approved": money(order["total"]),
+        return {"status": "sent to the team, waiting for their review", "refund_if_approved": money(order["total"]),
                 "next_step": "A person on the team confirms cancellations, usually within 2 business hours. The order "
                              "will not ship while the request is open."}
 
@@ -407,7 +407,7 @@ class StoreState:
                                     [("Customer verified with order number and email", True), ("Order not shipped yet", True),
                                      (f"Ships to {clean['country']}", True)], [])
         self.log("assistant", "request_address_change", f"order #{order['number']}", f"{request['id']} pending")
-        return {"request_id": request["id"], "status": "waiting for team review", "new_address": self.address_line(clean),
+        return {"status": "sent to the team, waiting for their review", "new_address": self.address_line(clean),
                 "next_step": "A person on the team confirms address changes, usually within 2 business hours."}
 
     def hand_off(self, reason: str, summary: str, priority: str, source: str = "assistant", draft: str | None = None) -> dict[str, Any]:
@@ -430,7 +430,7 @@ class StoreState:
             if draft:
                 ticket["draft"] = draft
         self.log(source, "hand_off", f"{ticket['id']} {reason} ({priority})")
-        return {"ticket_id": ticket["id"], "status": "passed to the team",
+        return {"status": "passed to a person on the team",
                 "next_step": "Tell the customer a person from the team will reply in this chat. Support hours are Monday "
                              "to Friday, 8 am to 6 pm Pacific time. Do not promise an outcome."}
 

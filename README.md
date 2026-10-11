@@ -5,9 +5,10 @@ their orders, and starts returns, exchanges and cancellations, while a person on
 approves every refund and every change.
 
 **Live demo: https://store-support-agent-demo.vercel.app**
-Press "Play the 20 second tour", try to trick it, or ask about an order as a customer, then approve or reject
-the request in the team inbox next to the chat and watch the customer get the update. Each
-visitor gets a private copy of the store that resets with a new chat.
+Press "Start the demo": six short steps take one return from the customer's chat to the
+refund, and you are the one who approves it. Then you try to trick it, watch a bad reply get
+stopped, and see what the chat cost. After that you can chat freely. Each visitor gets a
+private copy of the store.
 
 ![The demo: a customer asks for a return, the team approves it, the customer is told](docs/img/tour.gif)
 

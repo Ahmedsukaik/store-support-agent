@@ -16,7 +16,7 @@ def test_order_status_verifies_first_then_opens_the_order(chat):
 def test_a_return_for_the_wrong_size_quotes_the_amount_from_the_store(chat):
     chat.say("I'd like to return the rain jacket from order #1042, it's too small. My email is maya.lopez@example.com")
     assert chat.steps() == ["verify_customer", "get_order", "request_return"]
-    assert "$182.05" in chat.reply() and "$6.95" in chat.reply() and "R-1" in chat.reply()
+    assert "$182.05" in chat.reply() and "$6.95" in chat.reply() and "R-1" not in chat.reply()
     assert chat.view["requests"][0]["status"] == "pending"
 
 

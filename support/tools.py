@@ -115,18 +115,16 @@ def run_tool(state: StoreState, help_center: HelpCenter, name: str, raw_input: A
             state.log("assistant", "search_help_center", query[:80], f"{len(passages)} passage(s)")
             if not passages:
                 return ToolResult("No help center article matched. Do not guess: say you are not sure and offer to pass "
-                                  "the question to the team.", False, f'Searched the help center for "{query}": nothing found')
-            return ToolResult([p.block() for p in passages], False,
-                              f'Searched the help center for "{query}"', passages)
+                                  "the question to the team.", False, "Checked the help center: no answer there")
+            return ToolResult([p.block() for p in passages], False, "Checked the help center", passages)
         if name == "find_products":
             query = _s(data.get("query"), 200)
             found = state.find_products(query)
-            return ToolResult(json.dumps(found), False, f'Looked up products: "{query}"')
+            return ToolResult(json.dumps(found), False, "Checked the catalog")
         if name == "verify_customer":
             number = _s(data.get("order_number"), 40)
             result = state.verify_customer(number, _s(data.get("email"), 200))
-            return ToolResult(json.dumps(result), False,
-                              f"Verified {result['first_name']} with order #{normalize_order_number(number)}")
+            return ToolResult(json.dumps(result), False, f"Email matches order #{normalize_order_number(number)}")
         if name == "get_order":
             result = state.get_order(_s(data.get("order_number"), 40))
             return ToolResult(json.dumps(result), False, f"Opened order #{result['order_number']}")
@@ -137,24 +135,26 @@ def run_tool(state: StoreState, help_center: HelpCenter, name: str, raw_input: A
                                           _s(data.get("resolution"), 20), _s(data.get("exchange_size"), 20) or None)
             what = f"refund {result['refund_if_approved']}" if "refund_if_approved" in result else \
                 f"exchange for size {result['exchange_for_size']}"
-            return ToolResult(json.dumps(result), False, f"Sent return request {result['request_id']} for team review ({what})")
+            return ToolResult(json.dumps(result), False, f"Return request sent to your team ({what})")
         if name == "request_cancellation":
             result = state.request_cancellation(_s(data.get("order_number"), 40), _s(data.get("reason"), 200))
-            return ToolResult(json.dumps(result), False, f"Sent cancellation request {result['request_id']} for team review")
+            return ToolResult(json.dumps(result), False, "Cancellation request sent to your team")
         if name == "request_address_change":
             raw_address = data.get("address")
             address = raw_address if isinstance(raw_address, dict) else {}
             result = state.request_address_change(_s(data.get("order_number"), 40), address)
-            return ToolResult(json.dumps(result), False, f"Sent address change {result['request_id']} for team review")
+            return ToolResult(json.dumps(result), False, "Address change sent to your team")
         if name == "hand_off_to_human":
             result = state.hand_off(_s(data.get("reason"), 40), _s(data.get("summary"), 600), _s(data.get("priority"), 10))
-            return ToolResult(json.dumps(result), False, f"Passed the chat to the team ({result['ticket_id']})")
+            return ToolResult(json.dumps(result), False, "Passed to a person on your team")
         state.log("assistant", name[:40] or "?", "unknown tool", "refused")
         return ToolResult(json.dumps({"error": "unknown_tool", "message": f"There is no tool named {name!r}."}), True,
                           f"Refused an unknown tool {name[:40]!r}")
     except StoreError as e:
-        state.log("assistant", name, e.code, "refused")
-        return ToolResult(json.dumps({"error": e.code, "message": e.message}), True, f"Refused: {_first_sentence(e.message)}")
+        state.log("assistant", name, _first_sentence(e.message), "refused")
+        label = "Order number and email don't match" if e.code in ("no_match", "verification_locked") else \
+            f"Not allowed: {_first_sentence(e.message)}"
+        return ToolResult(json.dumps({"error": e.code, "message": e.message}), True, label)
 
 
 def _first_sentence(text: str) -> str:

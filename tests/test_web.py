@@ -111,7 +111,8 @@ def test_the_page_has_no_contact_details():
     public = Path(__file__).resolve().parent.parent / "public"
     for name in ("index.html", "app.js"):
         page = (public / name).read_text(encoding="utf-8")
-        assert not re.search(r"[\w.+-]+@[a-z][\w-]*\.[a-z]{2,}", page), name
+        emails = re.findall(r"[\w.+-]+@[a-z][\w-]*\.[a-z]{2,}", page)
+        assert all(e.endswith("@example.com") for e in emails), name  # only the fictional demo customers
         assert "mailto:" not in page and "tel:" not in page and "wa.me" not in page
 
 

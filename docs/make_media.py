@@ -22,7 +22,8 @@ SIZE = {"width": 1440, "height": 900}
 
 def main(url: str) -> None:
     OUT.mkdir(exist_ok=True)
-    with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp:
+    tmp = tempfile.mkdtemp()  # left for the system to clean: Windows can keep the video file open for a moment
+    with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome")
         context = browser.new_context(viewport=SIZE, device_scale_factor=1, record_video_dir=tmp, record_video_size=SIZE)
         page = context.new_page()

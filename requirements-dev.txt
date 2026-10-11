@@ -1,0 +1,8 @@
+# Everything in requirements.txt, plus what the tests and the checks need.
+-r requirements.txt
+pytest>=8,<10
+ruff>=0.6,<1
+mypy>=1.10,<2
+# The browser tests and docs/make_media.py drive an installed Chrome or Edge (no browser
+# download). Without Playwright or a browser, those tests are skipped.
+playwright>=1.45,<2

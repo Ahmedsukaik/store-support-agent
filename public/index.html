@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Store Support Agent: live demo</title>
+<meta name="description" content="A customer support AI agent for an online store, with a human approval inbox. Reference build on a fictional store.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f5c46'/%3E%3Cpath d='M9 22c0-8 6-13 14-13-1 8-6 13-14 13z' fill='%23f4c27a'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8"/><path d="M9 22c0-8 6-13 14-13-1 8-6 13-14 13z"/></svg></span>
+    <div>
+      <h1 class="brand-name">Store Support Agent</h1>
+      <div class="brand-sub">Reference build on a fictional demo store</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="mode" role="group" aria-label="Who answers">
+      <button type="button" id="mode-live" class="mode-btn" aria-pressed="true"><span class="dot"></span><span id="mode-live-label">Live AI</span></button>
+      <button type="button" id="mode-guided" class="mode-btn" aria-pressed="false">Guided (no AI)</button>
+    </div>
+    <button type="button" id="top-tour" class="ghost-btn tour-top" title="Play the 20 second tour">Tour</button>
+    <button type="button" id="new-chat" class="ghost-btn" title="Start again with a fresh store">New chat</button>
+  </div>
+</header>
+
+<nav class="switcher" aria-label="Views">
+  <button type="button" data-pane="customer" aria-pressed="true">Customer view</button>
+  <button type="button" data-pane="team" aria-pressed="false">Team inbox <span class="badge" id="switch-badge" hidden></span></button>
+</nav>
+
+<main class="layout">
+  <section class="store pane" id="pane-customer" aria-label="What the customer sees">
+    <div class="pane-label"><span>What the customer sees</span></div>
+    <div class="howto" id="howto">
+      <ol>
+        <li><b>Chat</b>&nbsp;as a customer</li>
+        <li><b>Approve</b>&nbsp;in the team inbox</li>
+        <li><b>Watch</b>&nbsp;the customer get the update</li>
+      </ol>
+      <span class="howto-actions">
+        <button type="button" class="play-btn" id="play-tour"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4 2.5v11l9-5.5z"/></svg>Play the 20 second tour</button>
+        <button type="button" class="link-btn" id="show-people" aria-expanded="false" aria-controls="people">Sample customers</button>
+      </span>
+      <div class="people" id="people" hidden></div>
+      <button type="button" class="close-btn" id="hide-howto" aria-label="Hide these tips">&times;</button>
+    </div>
+    <div class="stage">
+    <div class="shop" aria-hidden="true">
+      <div class="shop-nav">
+        <span class="shop-logo">Copperleaf <em>Outdoor</em></span>
+        <span class="shop-links"><span>Jackets</span><span>Packs</span><span>Tents</span><span>Camp kitchen</span></span>
+      </div>
+      <div class="hero">
+        <div>
+          <div class="hero-kicker">New season</div>
+          <div class="hero-title">Gear for wet trails<br>and long weekends</div>
+          <div class="hero-sub">Free standard shipping from $75. Returns within 30 days.</div>
+        </div>
+        <svg class="hero-art" viewBox="0 0 320 160"><path d="M0 150 L70 60 L110 105 L170 30 L240 120 L270 90 L320 150 Z" class="m1"/><path d="M0 160 L90 95 L150 140 L220 80 L320 160 Z" class="m2"/><circle cx="262" cy="38" r="16" class="sun"/></svg>
+      </div>
+      <div class="products" id="products"></div>
+    </div>
+
+    <div class="chat" id="chat" role="region" aria-label="Store chat">
+      <div class="chat-head">
+        <div class="avatar" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 22c0-8 6-13 14-13-1 8-6 13-14 13z"/></svg></div>
+        <div>
+          <h2 class="chat-title">Copperleaf support</h2>
+          <div class="chat-status" id="chat-status">Assistant online. A person reviews every refund.</div>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="suggestions" id="suggestions" role="group" aria-label="Suggested questions"></div>
+      <form class="composer" id="composer">
+        <label for="input" class="sr-only">Message</label>
+        <textarea id="input" rows="1" maxlength="800" dir="auto" placeholder="Ask about an order, a return or a product" autocomplete="off"></textarea>
+        <button type="submit" id="send" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11.5 20 4l-6.5 17-2.6-7.1z"/></svg></button>
+      </form>
+    </div>
+    </div>
+  </section>
+
+  <section class="team pane" id="pane-team" aria-label="What the support team sees">
+    <div class="pane-label"><span>What your team sees</span></div>
+    <div class="team-head">
+      <div>
+        <h2 class="team-title">Team inbox</h2>
+        <div class="team-sub">Every refund, cancellation and address change waits here for a person.</div>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-approvals" aria-controls="tab-body" data-tab="approvals" aria-selected="true">Approvals <span class="badge" id="badge-approvals" hidden></span></button>
+      <button type="button" role="tab" id="tab-handoffs" aria-controls="tab-body" data-tab="handoffs" aria-selected="false">Handoffs <span class="badge" id="badge-handoffs" hidden></span></button>
+      <button type="button" role="tab" id="tab-stats" aria-controls="tab-body" data-tab="stats" aria-selected="false">Cost</button>
+      <button type="button" role="tab" id="tab-orders" aria-controls="tab-body" data-tab="orders" aria-selected="false">Orders</button>
+      <button type="button" role="tab" id="tab-activity" aria-controls="tab-body" data-tab="activity" aria-selected="false">Activity</button>
+    </div>
+    <div class="tab-body" id="tab-body" role="tabpanel" tabindex="-1" aria-labelledby="tab-approvals"></div>
+  </section>
+</main>
+
+<footer class="foot">
+  A reference build: Copperleaf Outdoor is fictional, and every name, order and email is made up.
+  Each visitor gets a private copy of the store that resets with a new chat.
+  <a href="https://github.com/Ahmedsukaik/store-support-agent" rel="noopener" target="_blank">Source code</a>
+</footer>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="sr-only" id="announce" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -116,6 +116,19 @@ def test_tags_cannot_be_built_with_hidden_characters(chat):
     assert "<" not in sent and "team_message>" not in sent
 
 
+def test_nested_tags_in_a_huge_message_are_refused_quickly(chat):
+    kept = chat.session
+    started = time.monotonic()
+    with pytest.raises(ActionError):
+        chat.do({"type": "customer", "text": "<team_" * 20000 + "message>" * 20000})
+    assert time.monotonic() - started < 0.5 and chat.session == kept
+
+
+def test_text_direction_controls_are_dropped(chat):
+    chat.say("Where is my order?‮2401#")
+    assert "‮" not in start(chat.session, today=TODAY).messages[0]["content"][0]["text"]
+
+
 def test_a_bad_new_message_is_refused_and_the_chat_is_kept(chat):
     chat.say("Do you ship to the UK?")
     kept = chat.session

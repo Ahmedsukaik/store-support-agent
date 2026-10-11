@@ -40,9 +40,10 @@ MAX_TOOL_CALLS = 6         # tool calls in one model step
 MAX_BLOCKS = 40
 MAX_REPLY_TEXT = 8000      # characters of text in one model step
 MAX_TOOL_INPUT = 3000
+MAX_STRIP = 4000           # longest text strip_tags looks at (customer and team messages are far shorter)
 TOOL_ID = re.compile(r"toolu_[A-Za-z0-9_]{1,60}")
 SYSTEM_TAG = re.compile(r"</?\s*(?:team_message|store_update)\b[^>]*>?", re.I)
-CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u200b-\u200f\u2060-\u2064\ufeff\ud800-\udfff]")
+CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ud800-\udfff]")
 SIG = re.compile(r"[0-9a-f]{64}")
 CUT_OFF = ("refusal", "max_tokens", "model_context_window_exceeded")
 TOO_MANY_STEPS = ("I'm taking too long on this one, so I've passed our chat to the support team. A person will reply right "
@@ -163,7 +164,10 @@ def apply(r: Replay, event: Any, strict: bool = False) -> None:
 
 def strip_tags(text: str) -> str:
     """Remove control and invisible characters, then the tags only the system may use, until
-    none is left: "<team_<team_message>message>" must not turn into a tag after one pass."""
+    none is left: "<team_<team_message>message>" must not turn into a tag after one pass.
+    Long text is refused first: each pass is linear, and nested tags can force one pass per tag."""
+    if len(text) > MAX_STRIP:
+        raise SessionError("message is too long")
     text = CONTROL.sub("", text)
     previous = None
     while previous != text:

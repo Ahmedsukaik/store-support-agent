@@ -58,7 +58,7 @@ class HttpRunner:
         self.mode = "live" if self.http.get(self.url + "/api/config").json().get("live") else "guided"
 
     def chat(self, messages: list[str]) -> dict[str, Any]:
-        out = self.http.post(self.url + "/api/new").json()
+        out = self.http.post(self.url + "/api/new", json={}).json()
         for message in messages:
             out = self._step(out["session"], {"type": "customer", "text": message})
             while out["more"]:

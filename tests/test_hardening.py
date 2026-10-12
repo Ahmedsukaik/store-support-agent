@@ -153,7 +153,7 @@ def client() -> TestClient:
                          ids=["non-ascii signature", "number signature", "lone surrogate"])
 def test_odd_signatures_and_characters_are_refused_not_crashing(client, change):
     import json
-    session = client.post("/api/new").json()["session"]
+    session = client.post("/api/new", json={}).json()["session"]
     body = json.dumps(session)[:-1] + ", " + change + "}"  # raw JSON, as a browser or script could send it
     res = client.post("/api/step", content=('{"session": ' + body + ', "action": {"type": "view"}}').encode(),
                       headers={"Content-Type": "application/json"})
@@ -167,7 +167,7 @@ def test_nan_is_refused(client):
 
 
 def test_a_lone_surrogate_in_a_message_is_dropped(client):
-    session = client.post("/api/new").json()["session"]
+    session = client.post("/api/new", json={}).json()["session"]
     res = client.post("/api/step", content=('{"session": ' + __import__("json").dumps(session) +
                                             ', "action": {"type": "customer", "text": "hi \\ud800 there"}}').encode(),
                       headers={"Content-Type": "application/json"})
@@ -178,7 +178,7 @@ def test_x_forwarded_for_is_ignored_unless_running_on_vercel(monkeypatch):
     monkeypatch.setattr("support.web.PER_VISITOR_REQUESTS", (2, 600))
     monkeypatch.delenv("VERCEL", raising=False)
     client = TestClient(create_app(Agent()))
-    session = client.post("/api/new").json()["session"]
+    session = client.post("/api/new", json={}).json()["session"]
     codes = [client.post("/api/step", json={"session": session, "action": {"type": "view"}},
                          headers={"x-forwarded-for": f"10.0.0.{i}"}).status_code for i in range(3)]
     assert codes == [200, 200, 409]
